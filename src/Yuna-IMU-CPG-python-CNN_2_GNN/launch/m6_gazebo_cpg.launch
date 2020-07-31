@@ -1,0 +1,66 @@
+<?xml version="1.0" ?>
+<launch>
+
+
+  <include file="$(find xMonsterCPG)/launch/quickWorld.launch">
+
+  </include>
+
+
+  <!-- just to show the robot in the gazebo, no controller involved -->
+  <arg name="model" default="$(find xMonsterCPG)/urdf/m6.urdf.xacro" />
+  <param name="robot_description" command="rosrun xacro xacro $(arg model)" />
+  <node
+    name="spawn_model"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    args="-z 1 -urdf -model robot -param robot_description"
+    output="screen" />
+
+ 
+  <!-- run the state publisher node by default -->
+
+  <!-- <node pkg="joint_state_publisher" type="joint_state_publisher" name="rob_st_pub" >
+    </node> -->
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="rob_st_pub" >
+      <remap from="/joint_states" to="/m6/joint_states" />
+    </node>
+
+
+
+
+  <!-- Load joint controller configurations from YAML file to parameter server -->
+  <rosparam file="$(find xMonsterCPG)/config/m6_controllers.yaml" command="load"/>
+
+  <!-- load the controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" ns="/m6" args="
+  base1_position_controller shoulder1_position_controller elbow1_position_controller base2_position_controller shoulder2_position_controller 
+  elbow2_position_controller base3_position_controller shoulder3_position_controller elbow3_position_controller base4_position_controller 
+  shoulder4_position_controller elbow4_position_controller base5_position_controller shoulder5_position_controller elbow5_position_controller 
+  base6_position_controller shoulder6_position_controller elbow6_position_controller joint_state_controller"/>
+    <!-- 运行joint_state_publisher节点，发布机器人的关节状态  -->
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" ></node> 
+
+  <!--   
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+    <remap from="/joint_states" to="/m6/joint_states" />
+  </node> -->
+    <!-- 运行robot_state_publisher节点，发布tf  -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"  output="screen" >
+        <param name="publish_frequency" type="double" value="50.0" />
+    </node>
+
+ <node name= "control_cpg" pkg="xMonsterCPG" output="screen" type="laptop.py"/>
+  <node name= "image_processor" pkg="xMonsterCPG" output="screen" type="cvbridge_test.py"/>
+    <!-- 运行depthimage_to_laserscan节点，将点云深度数转换成激光数据 -->
+    <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan" output="screen">
+        <remap from="image" to="/kinect/depth/image_raw" />
+        <remap from="camera_info" to="/kinect/depth/camera_info" />
+        <remap from="scan" to="/scan" />
+        <param name="output_frame_id" value="/kinect_link" />
+    </node>
+
+ 
+
+</launch>
